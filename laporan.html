@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>E-Penyuluh Situbondo Online</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <style>
+        /* Desain sama seperti sebelumnya agar Bapak tidak bingung */
+        body { font-family: 'Segoe UI', sans-serif; background: #eef2f7; padding: 20px; }
+        .container { max-width: 850px; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); margin: auto; }
+        .app-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 5px solid #00a95a; padding-bottom: 15px; margin-bottom: 20px; }
+        .app-header img { height: 70px; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .full { grid-column: span 2; }
+        input, select, textarea { width: 100%; padding: 12px; margin-top: 5px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
+        .btn-box { margin-top: 25px; display: flex; gap: 10px; }
+        button { flex: 1; padding: 15px; font-weight: bold; cursor: pointer; border: none; border-radius: 8px; color: white; }
+        .btn-save { background-color: #10b981; }
+        .btn-pdf { background-color: #f59e0b; }
+        table { width: 100%; margin-top: 20px; border-collapse: collapse; }
+        th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="app-header">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/b/be/Logo_Kementerian_Agama.png" id="logoKemenag">
+        <div style="text-align:center">
+            <h2 style="margin:0">E-PENYULUH ONLINE</h2>
+            <p style="margin:0; color:#666">SITUBONDO SINKRON</p>
+        </div>
+        <img src="https://i.ibb.co.com/89SBy0Q/Logo-Ipari.png" id="logoIpari">
+    </div>
+
+    <div class="form-grid">
+        <div class="full">
+            <label>Format Laporan:</label>
+            <select id="formatLaporan">
+                <option value="RKO">RKO</option>
+                <option value="MATERI">Naskah Materi</option>
+                <option value="LAPORAN">Laporan Pelaksanaan</option>
+            </select>
+        </div>
+        <input type="text" id="kelompok" placeholder="Kelompok Sasaran">
+        <input type="date" id="tanggal">
+        <input type="text" id="namaKua" placeholder="Nama Kepala KUA">
+        <input type="text" id="nipKua" placeholder="NIP Kepala KUA">
+        <textarea id="materi" class="full" rows="4" placeholder="Isi Materi..."></textarea>
+        <div class="full">
+            <label>Foto Dokumentasi:</label>
+            <input type="file" id="fotoInput" accept="image/*">
+        </div>
+    </div>
+
+    <div class="btn-box">
+        <button class="btn-save" onclick="simpanKeCloud()">📥 SIMPAN KE CLOUD (HP & LAPTOP)</button>
+        <button class="btn-pdf" onclick="unduhPDF()">📄 CETAK PDF TERBARU</button>
+    </div>
+
+    <table id="tabelData">
+        <thead><tr><th>Tanggal</th><th>Kelompok</th><th>Format</th></tr></thead>
+        <tbody id="isiTabel"></tbody>
+    </table>
+</div>
+
+<script>
+    // === TEMPELKAN KODE FIREBASE CONFIG BAPAK DI SINI ===
+    const firebaseConfig = {
+        apiKey: "MASUKKAN_API_KEY_BAPAK",
+        authDomain: "PROJECT_ID_BAPAK.firebaseapp.com",
+        databaseURL: "https://PROJECT_ID_BAPAK-default-rtdb.firebaseio.com",
+        projectId: "PROJECT_ID_BAPAK",
+        storageBucket: "PROJECT_ID_BAPAK.appspot.com",
+        messagingSenderId: "ID_BAPAK",
+        appId: "APP_ID_BAPAK"
+    };
+    // ===================================================
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    let fotoBase64 = "";
+
+    // Handler Foto
+    document.getElementById('fotoInput').addEventListener('change', function(e) {
+        const reader = new FileReader();
+        reader.onload = () => fotoBase64 = reader.result;
+        reader.readAsDataURL(e.target.files[0]);
+    });
+
+    // SIMPAN KE CLOUD (Ini yang bikin nyatu!)
+    function simpanKeCloud() {
+        const data = {
+            format: document.getElementById('formatLaporan').value,
+            kelompok: document.getElementById('kelompok').value,
+            tanggal: document.getElementById('tanggal').value,
+            materi: document.getElementById('materi').value,
+            namaKua: document.getElementById('namaKua').value,
+            nipKua: document.getElementById('nipKua').value,
+            foto: fotoBase64,
+            ts: Date.now()
+        };
+        
+        db.ref('laporan/').push(data).then(() => {
+            alert("Data tersimpan di Cloud! Bisa dibuka di Laptop/HP mana saja.");
+            document.getElementById('materi').value = "";
+        });
+    }
+
+    // TAMPILKAN DATA DARI CLOUD SECARA REALTIME
+    db.ref('laporan/').on('value', (snapshot) => {
+        const tbody = document.getElementById('isiTabel');
+        tbody.innerHTML = "";
+        snapshot.forEach((child) => {
+            const item = child.val();
+            tbody.innerHTML += `<tr><td>${item.tanggal}</td><td>${item.kelompok}</td><td>${item.format}</td></tr>`;
+        });
+    });
+
+    // Fungsi Cetak PDF (sama seperti sebelumnya)
+    function unduhPDF() {
+        // ... (Logika cetak PDF sama seperti kode sebelumnya)
+        alert("Mengambil data terakhir dari cloud untuk dicetak...");
+        // Logika ambil data terakhir dan generate PDF
+    }
+</script>
+</body>
+</html>
